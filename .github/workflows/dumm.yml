@@ -1,11 +1,10 @@
-name: Index Test
+name: Clean Reusable
 
 on:
-  push:
-    branches: [ main ]
+  workflow_call:
 
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - run: echo "indexing trigger"
+      - run: echo "CLEAN REGISTRY"
