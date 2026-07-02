@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      PLUGIN: ${{ github.event.repository.name }}
+      PLUGIN: ${{ github.repository.name }}
 
     steps:
       - name: Checkout code
