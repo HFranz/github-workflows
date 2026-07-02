@@ -1,3 +1,0 @@
-jobs:
-  test:
-    uses: ./.github/workflows/test-reusable.yml
