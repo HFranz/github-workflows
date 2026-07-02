@@ -2,6 +2,10 @@ name: Release
 
 on:
   workflow_call:
+    inputs:
+      plugin:
+        type: string
+        required: true
 
 permissions:
   contents: write
@@ -13,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      PLUGIN: ${{ github.repository.name }}
+      PLUGIN: ${{ inputs.plugin }}
 
     steps:
       - name: Checkout code
