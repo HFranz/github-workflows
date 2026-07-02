@@ -2,11 +2,6 @@ name: Release
 
 on:
   workflow_call:
-    inputs:
-      plugin:
-        description: "Plugin slug (e.g. wp-xxxx-admin-settings)"
-        required: true
-        type: string
 
 permissions:
   contents: write
@@ -18,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      PLUGIN: ${{ inputs.plugin }}
+      PLUGIN: ${{ github.event.repository.name }}
 
     steps:
       - name: Checkout code
@@ -27,53 +22,54 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
 
-      - name: Extract version from PHP file
+      - name: Extract version from plugin
         id: version
         shell: bash
         run: |
           VERSION=$(grep -oP '^\s*\*\s*Version:\s*\K[\d.]+' "${PLUGIN}.php")
 
           if [ -z "$VERSION" ]; then
-            echo "Version could not be detected."
+            echo "❌ Version not found in ${PLUGIN}.php"
             exit 1
           fi
 
-          echo "Detected version: $VERSION"
+          echo "Plugin: $PLUGIN"
+          echo "Version: $VERSION"
+
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Update workflow summary
         run: |
-          echo "## 🚀 Release ${{ steps.version.outputs.version }}" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "**Plugin:** ${PLUGIN}" >> "$GITHUB_STEP_SUMMARY"
-          echo "**Version:** ${{ steps.version.outputs.version }}" >> "$GITHUB_STEP_SUMMARY"
-          echo "**Triggered by:** @${{ github.actor }}" >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo "## 🚀 Release"
+            echo ""
+            echo "- Plugin: **${PLUGIN}**"
+            echo "- Version: **${{ steps.version.outputs.version }}**"
+            echo "- Triggered by: @${{ github.actor }}"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Download latest successful Plugin ZIP Artifact
         uses: dawidd6/action-download-artifact@v11
         with:
           workflow: main.yml
           name: plugin-zip
-          path: ./artifacts
+          path: artifacts
           branch: main
           workflow_conclusion: success
 
-      - name: Rename ZIP
+      - name: Prepare release ZIP
         shell: bash
         run: |
           mkdir -p release
 
-          ZIP=$(find ./artifacts -name "*.zip" -type f | head -n1)
+          ZIP=$(find artifacts -name "*.zip" -type f | head -n1)
 
           if [ -z "$ZIP" ]; then
-            echo "No ZIP artifact found."
+            echo "❌ No ZIP artifact found."
             exit 1
           fi
 
           mv "$ZIP" "release/${{ steps.version.outputs.version }}.zip"
-
-          echo "Release ZIP:"
-          ls -l release
 
       - name: Create Git Tag
         shell: bash
@@ -108,8 +104,6 @@ jobs:
             "last_updated": "$(date -u +"%Y-%m-%d %H:%M:%S")"
           }
           EOF
-
-          cat release/update.json
 
       - name: Upload release directory
         uses: garygrossgarten/github-action-scp@0.9.0
