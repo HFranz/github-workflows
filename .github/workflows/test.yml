@@ -1,8 +1,11 @@
-name: Local Reusable Test
+name: Release
 
 on:
   workflow_dispatch:
 
 jobs:
-  test:
-    uses: sevmatic/github-workflows/.github/workflows/test-reuable-release.yml@main
+  release:
+    uses: sevmatic/github-workflows/.github/workflows/release.yml@main
+    with:
+      plugin: ${{ github.event.repository.name }}
+    secrets: inherit
