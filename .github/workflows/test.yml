@@ -5,4 +5,4 @@ on:
 
 jobs:
   test:
-    uses: ./.github/workflows/test-reuable-release.yml
+    uses: sevmatic/github-workflows/.github/workflows/test-reuable-release.yml@main
