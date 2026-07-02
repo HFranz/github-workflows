@@ -1,3 +1,8 @@
+name: Local Reusable Test
+
+on:
+  workflow_dispatch:
+
 jobs:
   test:
-    uses: ./.github/workflows/test-reusable.yml
+    uses: sevmatic/github-workflows/.github/workflows/test-reusable.yml@main
