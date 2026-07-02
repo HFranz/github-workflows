@@ -8,8 +8,4 @@ jobs:
     uses: sevmatic/github-workflows/.github/workflows/release.yml@main
     with:
       plugin: ${{ github.event.repository.name }}
-    permissions:
-      contents: write
-      actions: read
-      pull-requests: read
     secrets: inherit
