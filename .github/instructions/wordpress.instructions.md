@@ -1,66 +1,47 @@
 ---
 applyTo: 'wp-content/plugins/**,wp-content/themes/**,**/*.php,**/*.inc,**/*.js,**/*.jsx,**/*.ts,**/*.tsx,**/*.css,**/*.scss,**/*.json'
-description: 'WordPress development guidelines'
+description: 'WordPress coding rules: secure, performant, testable, WP standards compliant'
 ---
 
-# WordPress Development
+# WordPress Dev Rules
 
-## General
-- Follow WordPress Coding Standards (WPCS).
-- Never modify WordPress core.
-- Extend via actions and filters.
-- Use unique prefixes or PHP namespaces.
-- Keep functions small and focused.
-- Preserve existing architecture.
+## 1. Core Principles
+- Extend WP only via hooks/filters; never modify core
+- Use unique prefixes or namespaces (avoid globals)
+- Enqueue assets only via WP APIs (no inline scripts/styles)
+- Ensure i18n for all user-facing strings
+- Prefer small functions, separation of concerns
 
-## Security
-- Escape output.
-- Sanitize and validate all external input.
-- Verify capabilities before privileged actions.
-- Protect forms, AJAX and REST endpoints with nonces.
-- Always use `$wpdb->prepare()` for database queries.
-- Validate uploads before processing.
+## 2. Security (always required)
+- Escape output: `esc_*`, sanitize input: `sanitize_*`
+- Use nonces + capability checks for mutations (AJAX/REST/forms)
+- Use `$wpdb->prepare()` (no raw SQL)
+- Validate uploads via WP APIs
+- REST: always `permission_callback` + validated args schema
 
-## Internationalization
-- Wrap all user-facing strings in WordPress i18n functions.
-- Use the correct text domain consistently.
+## 3. Coding Standards
+- Follow WPCS + WordPress PHP/JS conventions
+- PHP 7.4+ compatible unless stated otherwise
+- Strict comparisons where appropriate
+- Use DocBlocks for public APIs
 
-## Performance
-- Enqueue assets; never inline JS or CSS.
-- Load assets only when needed.
-- Cache expensive operations where appropriate.
-- Avoid unnecessary queries and large loops.
+## 4. i18n
+- Wrap strings: `__()`, `esc_html__()` etc. with text domain
+- Load text domain in plugin/theme bootstrap
 
-## REST API
-- Always define `permission_callback`.
-- Validate and sanitize request arguments.
-- Return proper REST responses.
+## 5. Performance
+- Avoid heavy work on `init` unless necessary
+- Use transients/object cache for expensive queries
+- Conditional asset loading only where needed
 
-## Gutenberg
-- Prefer `block.json`.
-- Use `@wordpress/*` packages.
-- Use server-side rendering only when needed.
+## 6. Admin / REST / UI
+- Settings API with sanitization callbacks
+- REST routes must define args validation + permission checks
+- Use WP APIs for admin notices and screens
 
-## Admin
-- Use the Settings API.
-- Sanitize every setting.
-- Escape all rendered output.
-
-## Testing
-- Add or update tests for new functionality.
-- Cover sanitization, permissions, hooks and REST endpoints.
-- Prefer WordPress test utilities and factories.
-
-## Copilot
-Ensure generated code:
-
-- follows WPCS
-- is secure by default
-- is performant
-- is testable
-- uses hooks instead of core modifications
-- escapes output
-- sanitizes input
-- includes capability and nonce checks where required
-- uses i18n
-- avoids unnecessary dependencies
+## 7. Assets
+```php
+add_action('wp_enqueue_scripts', function () {
+  wp_enqueue_style('af', plugins_url('assets/style.css', __FILE__));
+  wp_enqueue_script('af', plugins_url('assets/app.js', __FILE__), [], null, true);
+});
