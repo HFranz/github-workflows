@@ -20,30 +20,42 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y gh
 
-      - name: Sync Copilot Instructions (direct push)
+      - name: Sync instructions
         run: |
           set -e
 
-          if [ -z "$REPOS" ]; then
-            echo "COPILOT_REPOS is empty"
-            exit 1
-          fi
-
+          # =========================
+          # CONFIG (single source of truth)
+          # =========================
           SOURCE_DIR="$GITHUB_WORKSPACE"
 
-          if [ ! -f "$SOURCE_DIR/wordpress.instructions.md" ]; then
-            echo "ERROR: wordpress.instructions.md not found in source repo"
+          CP_FILE="$SOURCE_DIR/.github/copilot-instructions.md"
+          WP_FILE="$SOURCE_DIR/.github/instructions/wordpress.instructions.md"
+
+          # =========================
+          # VALIDATION
+          # =========================
+          if [ -z "$REPOS" ]; then
+            echo "ERROR: COPILOT_REPOS is empty"
             exit 1
           fi
 
-          if [ ! -f "$SOURCE_DIR/.github/copilot-instructions.md" ]; then
-            echo "ERROR: .github/copilot-instructions.md not found in source repo"
+          if [ ! -f "$CP_FILE" ]; then
+            echo "ERROR: missing $CP_FILE"
             exit 1
           fi
 
-          CONTENT=$(cat "$SOURCE_DIR/.github/copilot-instructions.md")
-          WP=$(cat "$SOURCE_DIR/.github/instructions/wordpress.instructions.md")
+          if [ ! -f "$WP_FILE" ]; then
+            echo "ERROR: missing $WP_FILE"
+            exit 1
+          fi
 
+          CONTENT=$(cat "$CP_FILE")
+          WP=$(cat "$WP_FILE")
+
+          # =========================
+          # PROCESS REPOS
+          # =========================
           IFS=',' read -ra REPO_ARRAY <<< "$REPOS"
 
           for repo in "${REPO_ARRAY[@]}"; do
@@ -54,20 +66,21 @@ jobs:
             dir=$(basename "$repo")
             cd "$dir"
 
+            # Always sync latest state
             git checkout main
             git pull origin main
 
             mkdir -p .github
 
             # =========================
-            # OVERWRITE FINAL FILE
+            # WRITE FINAL FILE (overwrite)
             # =========================
-
             printf "# Copilot Instructions\n\n%s\n\n---\n\n# WordPress Instructions\n\n%s\n" \
               "$CONTENT" "$WP" > .github/copilot-instructions.md
 
             git add .github/copilot-instructions.md
 
+            # Skip if nothing changed
             if git diff --cached --quiet; then
               echo "No changes in $repo"
               cd ..
@@ -75,6 +88,7 @@ jobs:
               continue
             fi
 
+            # Commit + push
             git config user.name "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
 
