@@ -75,7 +75,7 @@ jobs:
             git config user.name "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
 
-            git commit -m "Sync instructions (1:1 from source)"
+            git commit -m "Sync instructions"
             git push origin main
 
             cd ..
