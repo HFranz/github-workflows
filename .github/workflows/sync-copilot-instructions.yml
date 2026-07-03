@@ -42,7 +42,7 @@ jobs:
           fi
 
           CONTENT=$(cat "$SOURCE_DIR/.github/copilot-instructions.md")
-          WP=$(cat "$SOURCE_DIR/wordpress.instructions.md")
+          WP=$(cat "$SOURCE_DIR/.github/instructions/wordpress.instructions.md")
 
           IFS=',' read -ra REPO_ARRAY <<< "$REPOS"
 
