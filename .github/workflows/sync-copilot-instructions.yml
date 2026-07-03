@@ -20,42 +20,25 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y gh
 
-      - name: Sync instructions
+      - name: Sync files (1:1 copy)
         run: |
           set -e
 
-          # =========================
-          # CONFIG (single source of truth)
-          # =========================
           SOURCE_DIR="$GITHUB_WORKSPACE"
 
-          CP_FILE="$SOURCE_DIR/.github/copilot-instructions.md"
-          WP_FILE="$SOURCE_DIR/.github/instructions/wordpress.instructions.md"
+          CP_SRC="$SOURCE_DIR/.github/copilot-instructions.md"
+          WP_SRC="$SOURCE_DIR/.github/instructions/wordpress.instructions.md"
 
-          # =========================
-          # VALIDATION
-          # =========================
-          if [ -z "$REPOS" ]; then
-            echo "ERROR: COPILOT_REPOS is empty"
+          if [ ! -f "$CP_SRC" ]; then
+            echo "ERROR: missing $CP_SRC"
             exit 1
           fi
 
-          if [ ! -f "$CP_FILE" ]; then
-            echo "ERROR: missing $CP_FILE"
+          if [ ! -f "$WP_SRC" ]; then
+            echo "ERROR: missing $WP_SRC"
             exit 1
           fi
 
-          if [ ! -f "$WP_FILE" ]; then
-            echo "ERROR: missing $WP_FILE"
-            exit 1
-          fi
-
-          CONTENT=$(cat "$CP_FILE")
-          WP=$(cat "$WP_FILE")
-
-          # =========================
-          # PROCESS REPOS
-          # =========================
           IFS=',' read -ra REPO_ARRAY <<< "$REPOS"
 
           for repo in "${REPO_ARRAY[@]}"; do
@@ -66,21 +49,22 @@ jobs:
             dir=$(basename "$repo")
             cd "$dir"
 
-            # Always sync latest state
             git checkout main
             git pull origin main
 
-            mkdir -p .github
+            # ensure target structure
+            mkdir -p .github/instructions
 
             # =========================
-            # WRITE FINAL FILE (overwrite)
+            # COPY FILES 1:1
             # =========================
-            printf "# Copilot Instructions\n\n%s\n\n---\n\n# WordPress Instructions\n\n%s\n" \
-              "$CONTENT" "$WP" > .github/copilot-instructions.md
+
+            cp "$CP_SRC" .github/copilot-instructions.md
+            cp "$WP_SRC" .github/instructions/wordpress.instructions.md
 
             git add .github/copilot-instructions.md
+            git add .github/instructions/wordpress.instructions.md
 
-            # Skip if nothing changed
             if git diff --cached --quiet; then
               echo "No changes in $repo"
               cd ..
@@ -88,11 +72,10 @@ jobs:
               continue
             fi
 
-            # Commit + push
             git config user.name "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
 
-            git commit -m "Sync Copilot + WordPress instructions"
+            git commit -m "Sync instructions (1:1 from source)"
             git push origin main
 
             cd ..
