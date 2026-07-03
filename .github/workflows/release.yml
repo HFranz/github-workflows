@@ -7,11 +7,6 @@ on:
         type: string
         required: true
 
-permissions:
-  contents: write
-  actions: read
-  pull-requests: read
-
 jobs:
   release:
     runs-on: ubuntu-latest
