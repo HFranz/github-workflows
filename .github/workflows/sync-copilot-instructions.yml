@@ -20,7 +20,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y gh
 
-      - name: Sync Copilot Instructions
+      - name: Sync Copilot Instructions (direct push)
         run: |
           set -e
 
@@ -39,21 +39,16 @@ jobs:
             dir=$(basename "$repo")
             cd "$dir"
 
-            BRANCH="sync/copilot-instructions"
-
-            git fetch origin
-
-            if git ls-remote --exit-code --heads origin "$BRANCH"; then
-              git checkout "$BRANCH"
-              git reset --hard "origin/$BRANCH"
-            else
-              git checkout -b "$BRANCH"
-            fi
+            # =========================
+            # Ensure main is up to date
+            # =========================
+            git checkout main
+            git pull origin main
 
             mkdir -p .github
 
             # =========================
-            # OVERWRITE / COMPOSE FILE
+            # Compose final file (overwrite)
             # =========================
 
             CONTENT=$(cat ../.github/copilot-instructions.md 2>/dev/null || true)
@@ -76,43 +71,7 @@ jobs:
 
             git commit -m "Sync Copilot + WordPress instructions"
 
-            git push origin "$BRANCH" --force-with-lease
-
-            # =========================
-            # PR handling
-            # =========================
-
-            PR_NUMBER=$(gh pr list \
-              --repo "$repo" \
-              --head "$BRANCH" \
-              --json number \
-              --jq '.[0].number')
-
-            if [ -z "$PR_NUMBER" ]; then
-              gh pr create \
-                --repo "$repo" \
-                --head "$BRANCH" \
-                --base main \
-                --title "Sync Copilot Instructions" \
-                --body "Automated sync of Copilot + WordPress instructions"
-            fi
-
-            # =========================
-            # AUTO MERGE
-            # =========================
-
-            PR_NUMBER=$(gh pr list \
-              --repo "$repo" \
-              --head "$BRANCH" \
-              --json number \
-              --jq '.[0].number')
-
-            if [ -n "$PR_NUMBER" ]; then
-              gh pr merge "$PR_NUMBER" \
-                --repo "$repo" \
-                --auto \
-                --squash
-            fi
+            git push origin main
 
             cd ..
             rm -rf "$dir"
