@@ -7,6 +7,10 @@ jobs:
   sync:
     runs-on: ubuntu-latest
 
+    env:
+      GH_TOKEN: ${{ secrets.GH_TOKEN }}
+      REPOS: ${{ vars.COPILOT_REPOS }}
+
     steps:
       - name: Checkout source repo
         uses: actions/checkout@v4
@@ -16,41 +20,31 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y gh
 
-      - name: Sync Copilot Instructions to Whitelisted Repos
-        env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
-          REPOS: ${{ vars.COPILOT_REPOS }}
+      - name: Sync Copilot Instructions
         run: |
           set -e
-
-          if [ -z "$REPOS" ]; then
-            echo "No repositories defined in COPILOT_REPOS"
-            exit 1
-          fi
 
           IFS=',' read -ra REPO_ARRAY <<< "$REPOS"
 
           for repo in "${REPO_ARRAY[@]}"; do
-            repo=$(echo "$repo" | xargs) # trim spaces
+            repo=$(echo "$repo" | xargs)
             echo "Processing $repo"
 
             git clone "https://x-access-token:${GH_TOKEN}@github.com/$repo.git"
             dir=$(basename "$repo")
-
             cd "$dir"
 
             BRANCH="sync/copilot-instructions"
 
-            git checkout -b "$BRANCH"
+            git checkout -B "$BRANCH"
 
             mkdir -p .github
-
             cp ../.github/copilot-instructions.md .github/copilot-instructions.md
 
             git add .github/copilot-instructions.md
 
             if git diff --cached --quiet; then
-              echo "No changes for $repo"
+              echo "No changes in $repo"
               cd ..
               rm -rf "$dir"
               continue
@@ -60,26 +54,33 @@ jobs:
             git config user.email "github-actions[bot]@users.noreply.github.com"
 
             git commit -m "Sync Copilot instructions"
+            git push origin "$BRANCH" --force-with-lease
 
-            git push origin "$BRANCH"
-
-            # PR erstellen (falls noch nicht vorhanden)
-            existing_pr=$(gh pr list \
+            # PR holen oder erstellen
+            PR_NUMBER=$(gh pr list \
               --repo "$repo" \
               --head "$BRANCH" \
               --json number \
               --jq '.[0].number')
 
-            if [ -z "$existing_pr" ]; then
-              gh pr create \
+            if [ -z "$PR_NUMBER" ]; then
+              PR_URL=$(gh pr create \
                 --repo "$repo" \
                 --head "$BRANCH" \
                 --base main \
                 --title "Sync Copilot Instructions" \
-                --body "Automated sync of .github/copilot-instructions.md"
-            else
-              echo "PR already exists: #$existing_pr"
+                --body "Automated sync of .github/copilot-instructions.md")
+
+              PR_NUMBER=$(echo "$PR_URL" | grep -oE '[0-9]+$')
             fi
+
+            echo "PR #$PR_NUMBER"
+
+            # Auto-merge aktivieren
+            gh pr merge "$PR_NUMBER" \
+              --repo "$repo" \
+              --auto \
+              --squash
 
             cd ..
             rm -rf "$dir"
