@@ -24,6 +24,11 @@ jobs:
         run: |
           set -e
 
+          if [ -z "$REPOS" ]; then
+            echo "COPILOT_REPOS is empty"
+            exit 1
+          fi
+
           IFS=',' read -ra REPO_ARRAY <<< "$REPOS"
 
           for repo in "${REPO_ARRAY[@]}"; do
@@ -39,7 +44,16 @@ jobs:
             git checkout -B "$BRANCH"
 
             mkdir -p .github
-            cp ../.github/copilot-instructions.md .github/copilot-instructions.md
+
+            # =========================
+            # OVERWRITE / COMPOSE FILE
+            # =========================
+
+            CONTENT=$(cat ../.github/copilot-instructions.md 2>/dev/null || true)
+            WP=$(cat ../wordpress.instructions.md 2>/dev/null || true)
+
+            printf "# Copilot Instructions\n\n%s\n\n---\n\n# WordPress Instructions\n\n%s\n" \
+              "$CONTENT" "$WP" > .github/copilot-instructions.md
 
             git add .github/copilot-instructions.md
 
@@ -53,10 +67,14 @@ jobs:
             git config user.name "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
 
-            git commit -m "Sync Copilot instructions"
-            git push origin "$BRANCH" --force-with-lease
+            git commit -m "Sync Copilot + WordPress instructions"
 
-            # PR holen oder erstellen
+            git push origin "$BRANCH"
+
+            # =========================
+            # PR handling
+            # =========================
+
             PR_NUMBER=$(gh pr list \
               --repo "$repo" \
               --head "$BRANCH" \
@@ -64,23 +82,30 @@ jobs:
               --jq '.[0].number')
 
             if [ -z "$PR_NUMBER" ]; then
-              PR_URL=$(gh pr create \
+              gh pr create \
                 --repo "$repo" \
                 --head "$BRANCH" \
                 --base main \
                 --title "Sync Copilot Instructions" \
-                --body "Automated sync of .github/copilot-instructions.md")
-
-              PR_NUMBER=$(echo "$PR_URL" | grep -oE '[0-9]+$')
+                --body "Automated sync of Copilot + WordPress instructions"
             fi
 
-            echo "PR #$PR_NUMBER"
+            # =========================
+            # AUTO MERGE
+            # =========================
 
-            # Auto-merge aktivieren
-            gh pr merge "$PR_NUMBER" \
+            PR_NUMBER=$(gh pr list \
               --repo "$repo" \
-              --auto \
-              --squash
+              --head "$BRANCH" \
+              --json number \
+              --jq '.[0].number')
+
+            if [ -n "$PR_NUMBER" ]; then
+              gh pr merge "$PR_NUMBER" \
+                --repo "$repo" \
+                --auto \
+                --squash
+            fi
 
             cd ..
             rm -rf "$dir"
