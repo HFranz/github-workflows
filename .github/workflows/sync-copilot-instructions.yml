@@ -41,7 +41,14 @@ jobs:
 
             BRANCH="sync/copilot-instructions"
 
-            git checkout -B "$BRANCH"
+            git fetch origin
+
+            if git ls-remote --exit-code --heads origin "$BRANCH"; then
+              git checkout "$BRANCH"
+              git reset --hard "origin/$BRANCH"
+            else
+              git checkout -b "$BRANCH"
+            fi
 
             mkdir -p .github
 
@@ -69,7 +76,7 @@ jobs:
 
             git commit -m "Sync Copilot + WordPress instructions"
 
-            git push origin "$BRANCH"
+            git push origin "$BRANCH" --force-with-lease
 
             # =========================
             # PR handling
