@@ -29,6 +29,21 @@ jobs:
             exit 1
           fi
 
+          SOURCE_DIR="$GITHUB_WORKSPACE"
+
+          if [ ! -f "$SOURCE_DIR/wordpress.instructions.md" ]; then
+            echo "ERROR: wordpress.instructions.md not found in source repo"
+            exit 1
+          fi
+
+          if [ ! -f "$SOURCE_DIR/.github/copilot-instructions.md" ]; then
+            echo "ERROR: .github/copilot-instructions.md not found in source repo"
+            exit 1
+          fi
+
+          CONTENT=$(cat "$SOURCE_DIR/.github/copilot-instructions.md")
+          WP=$(cat "$SOURCE_DIR/wordpress.instructions.md")
+
           IFS=',' read -ra REPO_ARRAY <<< "$REPOS"
 
           for repo in "${REPO_ARRAY[@]}"; do
@@ -39,20 +54,14 @@ jobs:
             dir=$(basename "$repo")
             cd "$dir"
 
-            # =========================
-            # Ensure main is up to date
-            # =========================
             git checkout main
             git pull origin main
 
             mkdir -p .github
 
             # =========================
-            # Compose final file (overwrite)
+            # OVERWRITE FINAL FILE
             # =========================
-
-            CONTENT=$(cat ../.github/copilot-instructions.md 2>/dev/null || true)
-            WP=$(cat ../wordpress.instructions.md 2>/dev/null || true)
 
             printf "# Copilot Instructions\n\n%s\n\n---\n\n# WordPress Instructions\n\n%s\n" \
               "$CONTENT" "$WP" > .github/copilot-instructions.md
@@ -70,7 +79,6 @@ jobs:
             git config user.email "github-actions[bot]@users.noreply.github.com"
 
             git commit -m "Sync Copilot + WordPress instructions"
-
             git push origin main
 
             cd ..
