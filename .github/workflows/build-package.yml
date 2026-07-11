@@ -1,0 +1,77 @@
+name: Build and Package
+
+on:
+  workflow_call:
+    inputs:
+      plugin:
+        type: string
+        required: true
+      php-version:
+        type: string
+        required: false
+        default: "8.5"
+      run-tests:
+        type: boolean
+        required: false
+        default: true
+
+jobs:
+  build-and-package:
+    runs-on: ubuntu-latest
+
+    env:
+      PLUGIN: ${{ inputs.plugin }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        if: ${{ inputs.run-tests }}
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ inputs.php-version }}
+          extensions: mbstring, xml, ctype, iconv, intl, pdo_sqlite
+          coverage: none
+
+      - name: Install Composer dependencies
+        if: ${{ inputs.run-tests }}
+        run: composer install --prefer-dist --no-progress
+
+      - name: Run Unit tests
+        if: ${{ inputs.run-tests }}
+        run: composer test
+
+      - name: Reinstall production dependencies
+        if: ${{ inputs.run-tests }}
+        run: |
+          rm -rf vendor
+          composer install --no-dev --prefer-dist --no-progress --optimize-autoloader
+
+      - name: Create plugin ZIP
+        shell: bash
+        run: |
+          mkdir -p build
+
+          rsync -av . "build/${PLUGIN}" \
+            --exclude='build' \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='tests' \
+            --exclude='node_modules' \
+            --exclude='.gitignore' \
+            --exclude='phpunit.xml' \
+            --exclude='composer.*'
+
+          cd build
+          zip -r "../${PLUGIN}.zip" "${PLUGIN}"
+
+      - name: Upload Plugin ZIP as Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: plugin-zip
+          path: "${{ env.PLUGIN }}.zip"
+          retention-days: 30
+
+      - name: Verify Plugin ZIP
+        run: ls -lh "${PLUGIN}.zip"
