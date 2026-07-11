@@ -6,6 +6,9 @@ on:
       plugin:
         type: string
         required: true
+      main_file:
+        type: string
+        required: false
 
 jobs:
   release:
@@ -13,6 +16,7 @@ jobs:
 
     env:
       PLUGIN: ${{ inputs.plugin }}
+      MAIN_FILE: ${{ inputs.main_file || inputs.plugin }}
 
     steps:
       - name: Checkout code
@@ -25,14 +29,15 @@ jobs:
         id: version
         shell: bash
         run: |
-          VERSION=$(grep -oP '^\s*\*\s*Version:\s*\K[\d.]+' "${PLUGIN}.php")
+          VERSION=$(grep -oP '^\s*\*\s*Version:\s*\K[\d.]+' "${MAIN_FILE}.php")
 
           if [ -z "$VERSION" ]; then
-            echo "❌ Version not found in ${PLUGIN}.php"
+            echo "❌ Version not found in ${MAIN_FILE}.php"
             exit 1
           fi
 
           echo "Plugin: $PLUGIN"
+          echo "Main file: $MAIN_FILE"
           echo "Version: $VERSION"
 
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
@@ -43,6 +48,7 @@ jobs:
             echo "## 🚀 Release"
             echo ""
             echo "- Plugin: **${PLUGIN}**"
+            echo "- Main file: **${MAIN_FILE}.php**"
             echo "- Version: **${{ steps.version.outputs.version }}**"
             echo "- Triggered by: @${{ github.actor }}"
           } >> "$GITHUB_STEP_SUMMARY"
@@ -75,6 +81,11 @@ jobs:
         run: |
           git config user.name "GitHub Action"
           git config user.email "action@github.com"
+
+          if git rev-parse "${{ steps.version.outputs.version }}" >/dev/null 2>&1; then
+            echo "Tag already exists."
+            exit 0
+          fi
 
           git tag -a "${{ steps.version.outputs.version }}" \
             -m "Release version ${{ steps.version.outputs.version }}"
