@@ -42,6 +42,24 @@ jobs:
 
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
+      - name: Verify tag matches plugin version
+        shell: bash
+        run: |
+          if [ "${{ github.ref_type }}" != "tag" ]; then
+            echo "❌ This workflow must be triggered by a tag push (got ref_type: ${{ github.ref_type }})."
+            exit 1
+          fi
+
+          TAG="${{ github.ref_name }}"
+          VERSION="${{ steps.version.outputs.version }}"
+
+          if [ "$TAG" != "$VERSION" ]; then
+            echo "❌ Tag '${TAG}' does not match version '${VERSION}' found in ${MAIN_FILE}.php."
+            exit 1
+          fi
+
+          echo "✅ Tag matches plugin version: $VERSION"
+
       - name: Update workflow summary
         run: |
           {
@@ -53,13 +71,13 @@ jobs:
             echo "- Triggered by: @${{ github.actor }}"
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Download latest successful Plugin ZIP Artifact
+      - name: Download Plugin ZIP Artifact for this commit
         uses: dawidd6/action-download-artifact@v21
         with:
           workflow: main.yml
           name: plugin-zip
           path: artifacts
-          branch: main
+          commit: ${{ github.sha }}
           workflow_conclusion: success
 
       - name: Prepare release ZIP
@@ -75,22 +93,6 @@ jobs:
           fi
 
           mv "$ZIP" "release/${{ steps.version.outputs.version }}.zip"
-
-      - name: Create Git Tag
-        shell: bash
-        run: |
-          git config user.name "GitHub Action"
-          git config user.email "action@github.com"
-
-          if git rev-parse "${{ steps.version.outputs.version }}" >/dev/null 2>&1; then
-            echo "Tag already exists."
-            exit 0
-          fi
-
-          git tag -a "${{ steps.version.outputs.version }}" \
-            -m "Release version ${{ steps.version.outputs.version }}"
-
-          git push origin "${{ steps.version.outputs.version }}"
 
       - name: Create GitHub Release
         env:
