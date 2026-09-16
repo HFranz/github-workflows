@@ -54,7 +54,7 @@ jobs:
           mkdir -p build
 
           rsync -av . "build/${PLUGIN}" \
-            --exclude='build' \
+            --exclude='/build' \
             --exclude='.git' \
             --exclude='.github' \
             --exclude='tests' \
