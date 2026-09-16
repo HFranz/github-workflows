@@ -98,12 +98,19 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create \
-            "${{ steps.version.outputs.version }}" \
-            "release/${{ steps.version.outputs.version }}.zip" \
-            --latest \
-            --verify-tag \
-            --generate-notes
+          if gh release view "${{ steps.version.outputs.version }}" >/dev/null 2>&1; then
+            gh release upload \
+              "${{ steps.version.outputs.version }}" \
+              "release/${{ steps.version.outputs.version }}.zip" \
+              --clobber
+          else
+            gh release create \
+              "${{ steps.version.outputs.version }}" \
+              "release/${{ steps.version.outputs.version }}.zip" \
+              --latest \
+              --verify-tag \
+              --generate-notes
+          fi
 
       - name: Generate update.json
         shell: bash
